@@ -36,10 +36,18 @@ The server listens on port `5000`.
 
 ## Concurrency Model
 
-Each of the four retrieval routes within `router/general.js` is an `async` handler that awaits an Axios request
-against the `/catalogue` endpoint, so no client ever blocks another while the shop is queried. Request origins
-resolve from the incoming request itself rather than a hardcoded address, allowing the server to relocate to any
-host or port without alteration.
+Four named asynchronous functions within `router/general.js` carry the retrieval work, each awaiting an Axios
+request against the `/catalogue` endpoint so that no client ever blocks another while the shop is queried.
+
+| Function | Retrieves |
+| --- | --- |
+| `getAllBooks` | Every book available in the shop. |
+| `getBookByISBN` | Book details matching a supplied ISBN. |
+| `getBooksByAuthor` | Book details matching a supplied author. |
+| `getBooksByTitle` | Book details matching a supplied title. |
+
+Request origins resolve from the incoming request itself rather than a hardcoded address, allowing the server to
+relocate to any host or port without alteration.
 
 ## Submission Artifacts
 
