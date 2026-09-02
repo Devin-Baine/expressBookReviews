@@ -1,0 +1,2 @@
+curl -b cookies.txt -X PUT "http://localhost:5000/customer/auth/review/1?review=A%20towering%20portrait%20of%20cultural%20collision%20and%20personal%20downfall."
+{"message":"A review of ISBN 1 has been added successfully for devinbaine.","reviews":{"devinbaine":"A towering portrait of cultural collision and personal downfall."}}
