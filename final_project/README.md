@@ -23,6 +23,7 @@ The server listens on port `5000`.
 | `GET` | `/author/:author` | Retrieve every book attributed to the supplied author. |
 | `GET` | `/title/:title` | Retrieve every book carrying the supplied title. |
 | `GET` | `/review/:isbn` | Retrieve the reviews recorded against the supplied ISBN. |
+| `GET` | `/catalogue` | Serve the raw catalogue that the asynchronous routes request through Axios. |
 | `POST` | `/register` | Register a new user from a JSON body of `username` and `password`. |
 
 ## Registered User Endpoints
@@ -33,23 +34,12 @@ The server listens on port `5000`.
 | `PUT` | `/customer/auth/review/:isbn?review=` | Add a review, or modify the review the requesting user previously left. |
 | `DELETE` | `/customer/auth/review/:isbn` | Delete only the review owned by the requesting user. |
 
-## Asynchronous Endpoints
-
-Mirrors of the four retrieval routes, implemented with Axios and async/await so that concurrent clients never
-block one another.
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/async/books` | Retrieve the full catalogue through Axios. |
-| `GET` | `/async/isbn/:isbn` | Retrieve a single book by ISBN through Axios. |
-| `GET` | `/async/author/:author` | Retrieve books by author through Axios. |
-| `GET` | `/async/title/:title` | Retrieve books by title through Axios. |
-
 ## Concurrency Model
 
-Every retrieval helper within `router/general.js` returns a Promise, and each public route consumes that Promise
-through `.then()` and `.catch()` callbacks. The `/async` routes layer Axios and async/await over the same API,
-demonstrating both asynchronous techniques required by the project.
+Each of the four retrieval routes within `router/general.js` is an `async` handler that awaits an Axios request
+against the `/catalogue` endpoint, so no client ever blocks another while the shop is queried. Request origins
+resolve from the incoming request itself rather than a hardcoded address, allowing the server to relocate to any
+host or port without alteration.
 
 ## Submission Artifacts
 

@@ -5,64 +5,13 @@ let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
 
-// Origin of the Running Server, Consumed by the Axios Powered Routes
-const BASE_URL = "http://localhost:5000";
+// Resolve the Origin of the Incoming Request So Axios Targets This Same Server
+const originOf = (req) => `${req.protocol}://${req.get("host")}`;
 
-// Promise Resolving to the Complete Book Catalogue
-const fetchAllBooks = () =>
-    new Promise((resolve) => resolve(books));
-
-// Promise Resolving to the Single Book Registered Under a Given ISBN
-const fetchBookByISBN = (isbn) =>
-    new Promise((resolve, reject) => {
-        const book = books[isbn];
-
-        if (book) {
-            resolve({ isbn, ...book });
-        } else {
-            reject(new Error(`No book was found for the ISBN ${isbn}.`));
-        }
-    });
-
-// Promise Resolving to Every Book Attributed to a Given Author
-const fetchBooksByAuthor = (author) =>
-    new Promise((resolve, reject) => {
-        const matches = Object.keys(books)
-            .filter((isbn) => books[isbn].author.toLowerCase() === author.toLowerCase())
-            .map((isbn) => ({ isbn, ...books[isbn] }));
-
-        if (matches.length > 0) {
-            resolve(matches);
-        } else {
-            reject(new Error(`No books were found for the author ${author}.`));
-        }
-    });
-
-// Promise Resolving to Every Book Published Under a Given Title
-const fetchBooksByTitle = (title) =>
-    new Promise((resolve, reject) => {
-        const matches = Object.keys(books)
-            .filter((isbn) => books[isbn].title.toLowerCase() === title.toLowerCase())
-            .map((isbn) => ({ isbn, ...books[isbn] }));
-
-        if (matches.length > 0) {
-            resolve(matches);
-        } else {
-            reject(new Error(`No books were found for the title ${title}.`));
-        }
-    });
-
-// Promise Resolving to the Reviews Recorded Against a Given ISBN
-const fetchReviewsByISBN = (isbn) =>
-    new Promise((resolve, reject) => {
-        const book = books[isbn];
-
-        if (book) {
-            resolve(book.reviews);
-        } else {
-            reject(new Error(`No book was found for the ISBN ${isbn}.`));
-        }
-    });
+// Catalogue Data Source Backing Every Axios Request Issued Below
+public_users.get('/catalogue', function (req, res) {
+    return res.status(200).json(books);
+});
 
 // Register a Brand New User of the Application
 public_users.post("/register", (req, res) => {
@@ -83,105 +32,103 @@ public_users.post("/register", (req, res) => {
     return res.status(201).json({ message: `User ${username} has been registered successfully and may now log in.` });
 });
 
-// Retrieve the List of Books Available in the Shop
-public_users.get('/', function (req, res) {
-    fetchAllBooks()
-        .then((catalogue) => {
-            res.set("Content-Type", "application/json");
-            return res.status(200).send(JSON.stringify(catalogue, null, 4));
-        })
-        .catch((error) => res.status(500).json({ message: error.message }));
-});
-
-// Retrieve the Book Details Belonging to a Specified ISBN
-public_users.get('/isbn/:isbn', function (req, res) {
-    fetchBookByISBN(req.params.isbn)
-        .then((book) => {
-            res.set("Content-Type", "application/json");
-            return res.status(200).send(JSON.stringify(book, null, 4));
-        })
-        .catch((error) => res.status(404).json({ message: error.message }));
-});
-
-// Retrieve Every Book Written by a Specified Author
-public_users.get('/author/:author', function (req, res) {
-    fetchBooksByAuthor(req.params.author)
-        .then((matches) => {
-            res.set("Content-Type", "application/json");
-            return res.status(200).send(JSON.stringify({ booksbyauthor: matches }, null, 4));
-        })
-        .catch((error) => res.status(404).json({ message: error.message }));
-});
-
-// Retrieve Every Book Carrying a Specified Title
-public_users.get('/title/:title', function (req, res) {
-    fetchBooksByTitle(req.params.title)
-        .then((matches) => {
-            res.set("Content-Type", "application/json");
-            return res.status(200).send(JSON.stringify({ booksbytitle: matches }, null, 4));
-        })
-        .catch((error) => res.status(404).json({ message: error.message }));
-});
-
-// Retrieve the Reviews Recorded Against a Specified ISBN
-public_users.get('/review/:isbn', function (req, res) {
-    fetchReviewsByISBN(req.params.isbn)
-        .then((reviews) => {
-            if (Object.keys(reviews).length === 0) {
-                return res.status(200).json({ message: "No reviews found for this book." });
-            }
-
-            res.set("Content-Type", "application/json");
-            return res.status(200).send(JSON.stringify(reviews, null, 4));
-        })
-        .catch((error) => res.status(404).json({ message: error.message }));
-});
-
-// Task 10: Retrieve the Full Catalogue Through Axios and Async/Await
-public_users.get('/async/books', async function (req, res) {
+// Task 10: Retrieve Every Book Available in the Shop Using Async/Await With Axios
+public_users.get('/', async function (req, res) {
     try {
-        const response = await axios.get(`${BASE_URL}/`);
+        const response = await axios.get(`${originOf(req)}/catalogue`);
 
         res.set("Content-Type", "application/json");
-        return res.status(200).send(JSON.stringify(response.data, null, 4));
+        return res.status(200).send(JSON.stringify(response.data));
     } catch (error) {
         return res.status(500).json({ message: "The book catalogue could not be retrieved." });
     }
 });
 
-// Task 11: Retrieve a Book by ISBN Through Axios and Async/Await
-public_users.get('/async/isbn/:isbn', async function (req, res) {
+// Task 11: Retrieve the Book Details Belonging to a Specified ISBN Using Async/Await With Axios
+public_users.get('/isbn/:isbn', async function (req, res) {
+    const { isbn } = req.params;
+
     try {
-        const response = await axios.get(`${BASE_URL}/isbn/${encodeURIComponent(req.params.isbn)}`);
+        const response = await axios.get(`${originOf(req)}/catalogue`);
+        const book = response.data[isbn];
+
+        if (!book) {
+            return res.status(404).json({ message: `No book was found for the ISBN ${isbn}.` });
+        }
 
         res.set("Content-Type", "application/json");
-        return res.status(200).send(JSON.stringify(response.data, null, 4));
+        return res.status(200).send(JSON.stringify({ isbn, ...book }));
     } catch (error) {
-        return res.status(404).json({ message: `No book was found for the ISBN ${req.params.isbn}.` });
+        return res.status(500).json({ message: "The book catalogue could not be retrieved." });
     }
 });
 
-// Task 12: Retrieve Books by Author Through Axios and Async/Await
-public_users.get('/async/author/:author', async function (req, res) {
+// Task 12: Retrieve Every Book Written by a Specified Author Using Async/Await With Axios
+public_users.get('/author/:author', async function (req, res) {
+    const { author } = req.params;
+
     try {
-        const response = await axios.get(`${BASE_URL}/author/${encodeURIComponent(req.params.author)}`);
+        const response = await axios.get(`${originOf(req)}/catalogue`);
+        const catalogue = response.data;
+
+        const matches = Object.keys(catalogue)
+            .filter((isbn) => catalogue[isbn].author.toLowerCase() === author.toLowerCase())
+            .map((isbn) => ({ isbn, ...catalogue[isbn] }));
+
+        if (matches.length === 0) {
+            return res.status(404).json({ message: `No books were found for the author ${author}.` });
+        }
 
         res.set("Content-Type", "application/json");
-        return res.status(200).send(JSON.stringify(response.data, null, 4));
+        return res.status(200).send(JSON.stringify(matches));
     } catch (error) {
-        return res.status(404).json({ message: `No books were found for the author ${req.params.author}.` });
+        return res.status(500).json({ message: "The book catalogue could not be retrieved." });
     }
 });
 
-// Task 13: Retrieve Books by Title Through Axios and Async/Await
-public_users.get('/async/title/:title', async function (req, res) {
+// Task 13: Retrieve Every Book Carrying a Specified Title Using Async/Await With Axios
+public_users.get('/title/:title', async function (req, res) {
+    const { title } = req.params;
+
     try {
-        const response = await axios.get(`${BASE_URL}/title/${encodeURIComponent(req.params.title)}`);
+        const response = await axios.get(`${originOf(req)}/catalogue`);
+        const catalogue = response.data;
+
+        const matches = Object.keys(catalogue)
+            .filter((isbn) => catalogue[isbn].title.toLowerCase() === title.toLowerCase())
+            .map((isbn) => ({ isbn, ...catalogue[isbn] }));
+
+        if (matches.length === 0) {
+            return res.status(404).json({ message: `No books were found for the title ${title}.` });
+        }
 
         res.set("Content-Type", "application/json");
-        return res.status(200).send(JSON.stringify(response.data, null, 4));
+        return res.status(200).send(JSON.stringify(matches));
     } catch (error) {
-        return res.status(404).json({ message: `No books were found for the title ${req.params.title}.` });
+        return res.status(500).json({ message: "The book catalogue could not be retrieved." });
+    }
+});
+
+// Retrieve the Reviews Recorded Against a Specified ISBN
+public_users.get('/review/:isbn', async function (req, res) {
+    const { isbn } = req.params;
+
+    try {
+        const response = await axios.get(`${originOf(req)}/catalogue`);
+        const book = response.data[isbn];
+
+        if (!book) {
+            return res.status(404).json({ message: `No book was found for the ISBN ${isbn}.` });
+        }
+
+        if (Object.keys(book.reviews).length === 0) {
+            return res.status(200).json({ message: "No reviews found for this book." });
+        }
+
+        res.set("Content-Type", "application/json");
+        return res.status(200).send(JSON.stringify(book.reviews));
+    } catch (error) {
+        return res.status(500).json({ message: "The book reviews could not be retrieved." });
     }
 });
 
